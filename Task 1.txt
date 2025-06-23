@@ -1,0 +1,44 @@
+import java.util.Scanner;
+
+class Main {
+  public static void main(String[] args) {
+    Scanner myObj1 = new Scanner(System.in);
+    System.out.println("Enter the first integer:");
+    Integer firstInteger = myObj1.nextInt();
+    
+    Scanner myObj2 = new Scanner(System.in); 
+    System.out.println("Enter the second integer:");
+    Integer secondInteger = myObj2.nextInt();
+    
+    Integer Sum = firstInteger+secondInteger;
+    Integer Diff = firstInteger-secondInteger;
+    Integer Prod = firstInteger*secondInteger;
+    
+    System.out.println("Sum of " + firstInteger + " and " + secondInteger + " is: " + Sum);
+   System.out.println("Difference between " + firstInteger + " and " + secondInteger + " is: " + Diff);
+   System.out.println("Product of " + firstInteger + " and " + secondInteger + " is: " + Prod);
+    
+    Scanner myObj3 = new Scanner(System.in);
+    System.out.println("Enter a floating-point number:");
+    double floatNum = myObj3.nextDouble();
+    double Mulplication = floatNum*2;
+    System.out.println(floatNum + " multiplied by 2 is: " + Mulplication);
+    
+    Scanner myObj4 = new Scanner(System.in);
+    System.out.println("Enter a single character:");
+    char singleChar = myObj4.next().charAt(0);
+    char nextChar = (char) (singleChar + 1);
+    System.out.println("The next character after '"+singleChar+"' is: "+nextChar);
+    
+    Scanner myObj5 = new Scanner(System.in);
+    System.out.println("Enter a boolean value (true/false):");
+    boolean bool = myObj5.nextBoolean();
+    boolean opposite = !bool;
+    System.out.println("The opposite of "+bool+" is: "+opposite);
+    
+    Scanner myObj6 = new Scanner(System.in);
+    System.out.println("Enter your name: ");
+    String userName = myObj6.nextLine();
+    System.out.println("Hello, "+ userName + "!"); 
+  }
+}

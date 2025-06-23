@@ -1,0 +1,241 @@
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+
+class Book {
+    UUID bookID;
+    String title;
+    String author;
+    String genre;
+    boolean isIssued;
+    Member issuedTo;
+    LocalDate dueDate;
+    Queue<Member> reservationQueue = new LinkedList<>();
+
+    public Book(String title, String author, String genre) {
+        this.bookID = UUID.randomUUID();
+        this.title = title;
+        this.author = author;
+        this.genre = genre;
+        this.isIssued = false;
+    }
+
+    public String toString() {
+        return String.format("[%s] '%s' by %s [%s] - %s",
+                bookID, title, author, genre, isIssued ? "Issued" : "Available");
+    }
+}
+
+
+abstract class Member {
+    UUID memberID;
+    String name;
+    String email;
+    String phone;
+    int maxBooksAllowed;
+    List<Book> currentlyIssuedBooks = new ArrayList<>();
+
+    public Member(String name, String email, String phone) {
+        this.memberID = UUID.randomUUID();
+        this.name = name;
+        this.email = email;
+        this.phone = phone;
+    }
+
+    abstract int getMaxAllowedDays();
+    abstract String getMemberType();
+
+    public String toString() {
+        return String.format("%s (%s) - UUID: %s", name, email, memberID);
+    }
+}
+
+
+class StudentMember extends Member {
+    public StudentMember(String name, String email, String phone) {
+        super(name, email, phone);
+        this.maxBooksAllowed = 3;
+    }
+
+    public int getMaxAllowedDays() { return 14; }
+    public String getMemberType() { return "Student"; }
+}
+
+class TeacherMember extends Member {
+    public TeacherMember(String name, String email, String phone) {
+        super(name, email, phone);
+        this.maxBooksAllowed = 5;
+    }
+
+    public int getMaxAllowedDays() { return 30; }
+    public String getMemberType() { return "Teacher"; }
+}
+
+class GuestMember extends Member {
+    public GuestMember(String name, String email, String phone) {
+        super(name, email, phone);
+        this.maxBooksAllowed = 1;
+    }
+
+    public int getMaxAllowedDays() { return 7; }
+    public String getMemberType() { return "Guest"; }
+}
+
+
+class Librarian extends Member {
+    LibrarySystem library;
+
+    public Librarian(String name, String email, String phone, LibrarySystem library) {
+        super(name, email, phone);
+        this.library = library;
+        this.maxBooksAllowed = 10;
+    }
+
+    public int getMaxAllowedDays() { return 60; }
+    public String getMemberType() { return "Librarian"; }
+
+    public void addBook(Book book) {
+        library.addBook(book);
+    }
+
+    public void removeBook(Book book) {
+        library.removeBook(book);
+    }
+
+    public void registerMember(Member member) {
+        library.registerMember(member);
+    }
+
+    public void viewOverdueBooks() {
+        library.viewOverdueBooks();
+    }
+}
+
+
+class LibrarySystem {
+    Map<UUID, Book> books = new ConcurrentHashMap<>();
+    Map<String, Member> members = new ConcurrentHashMap<>();
+
+    public void addBook(Book book) {
+        if (books.containsKey(book.bookID)) {
+            System.out.println("Book already exists.");
+        } else {
+            books.put(book.bookID, book);
+            System.out.println("Book added: " + book);
+        }
+    }
+
+    public void removeBook(Book book) {
+        if (book.isIssued) {
+            System.out.println("Book is currently issued and cannot be removed.");
+        } else {
+            books.remove(book.bookID);
+            System.out.println("Book removed: " + book.title);
+        }
+    }
+
+    public void registerMember(Member member) {
+        if (members.containsKey(member.email)) {
+            System.out.println("Member already registered.");
+        } else {
+            members.put(member.email, member);
+            System.out.println("Member registered: " + member);
+        }
+    }
+
+    public void issueBook(Book book, Member member) {
+        if (!book.isIssued && member.currentlyIssuedBooks.size() < member.maxBooksAllowed) {
+            book.isIssued = true;
+            book.issuedTo = member;
+            book.dueDate = LocalDate.now().plusDays(member.getMaxAllowedDays());
+            member.currentlyIssuedBooks.add(book);
+            System.out.println("Book issued: " + book.title + " to " + member.name);
+        } else {
+            System.out.println("Cannot issue book: " + book.title);
+        }
+    }
+
+    public void returnBook(Book book, Member member) {
+        if (book.issuedTo == member) {
+            book.isIssued = false;
+            book.issuedTo = null;
+            book.dueDate = null;
+            member.currentlyIssuedBooks.remove(book);
+
+            if (!book.reservationQueue.isEmpty()) {
+                Member next = book.reservationQueue.poll();
+                issueBook(book, next);
+            } else {
+                System.out.println("Book returned and available: " + book.title);
+            }
+        }
+    }
+
+    public void searchBooks(String keyword) {
+        for (Book book : books.values()) {
+            if (book.title.contains(keyword) || book.author.contains(keyword) || book.genre.contains(keyword)) {
+                System.out.println(book);
+            }
+        }
+    }
+
+    public void reserveBook(Book book, Member member) {
+        if (book.isIssued) {
+            book.reservationQueue.offer(member);
+            System.out.println(member.name + " reserved the book: " + book.title);
+        } else {
+            System.out.println("Book is available, no need to reserve.");
+        }
+    }
+
+    public void viewIssuedBooks(Member member) {
+        for (Book book : member.currentlyIssuedBooks) {
+            long remainingDays = ChronoUnit.DAYS.between(LocalDate.now(), book.dueDate);
+            System.out.printf("%s - Due: %s (%d days left)\n", book.title, book.dueDate, remainingDays);
+        }
+    }
+
+    public void viewOverdueBooks() {
+        for (Book book : books.values()) {
+            if (book.isIssued && book.dueDate.isBefore(LocalDate.now())) {
+                System.out.println("Overdue: " + book.title + " issued to " + book.issuedTo.name);
+            }
+        }
+    }
+}
+
+
+public class Main {
+    public static void main(String[] args) {
+        LibrarySystem library = new LibrarySystem();
+        Librarian librarian = new Librarian("Admin", "admin@library.com", "9999999999", library);
+
+        Book book1 = new Book("Java Basics", "Ram", "Programming");
+        Book book2 = new Book("OOP Concepts", "Shyam", "CS");
+
+        librarian.addBook(book1);
+        librarian.addBook(book2);
+
+        Member student = new StudentMember("Ram", "ram@mail.com", "123");
+        Member teacher = new TeacherMember("Shyam", "shyam@mail.com", "456");
+
+        librarian.registerMember(student);
+        librarian.registerMember(teacher);
+
+        System.out.println("Student UUID: " + student.memberID);
+        System.out.println("Teacher UUID: " + teacher.memberID);
+
+        library.issueBook(book1, student);
+        library.issueBook(book2, teacher);
+
+        library.viewIssuedBooks(student);
+        library.viewIssuedBooks(teacher);
+
+        library.searchBooks("Java");
+        library.reserveBook(book1, teacher);
+        library.returnBook(book1, student);
+        librarian.viewOverdueBooks();
+    }
+}
